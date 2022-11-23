@@ -58,3 +58,55 @@ def reserve_original_prefix(base_prefix: str, post="") -> str:
     prefix_text.write(prefix + "\n")
 
     return prefix
+
+
+def prop_path_to_data_path(prop_path: list[str]) -> str:
+    """Converts prop_path to data_path
+
+    Parameters
+    ----------
+    prop_path : list[str]
+        List of attributes and keys
+
+    Returns
+    -------
+    str
+        Data path
+    """
+    out = ""
+    prev = False
+    for elem in prop_path:
+        if elem.startswith("["):
+            out += '["' + elem[1:-1] + '"]'
+        else:
+            if prev:
+                out += "."
+            out += elem
+            prev = True
+    return out
+
+
+def set_value_by_prop_path(obj: bpy.types.Object, prop_path: list[str], value: any):
+    """Sets the value pointed by the prop_path
+
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        Blender object
+    prop_path : list[str]
+        List of attributes and keys
+    value : any
+        Value to change to
+    """
+    head = obj
+    for i, elem in enumerate(prop_path):
+        if elem.startswith("["):
+            if i == len(prop_path) - 1:
+                head[elem[1:-1]] = value
+                return
+            head = head[elem[1:-1]]
+        else:
+            if i == len(prop_path) - 1:
+                setattr(head, elem, value)
+                return
+            head = getattr(head, elem)

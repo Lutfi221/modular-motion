@@ -19,6 +19,12 @@ class Stage:
     Used to prevent name collisions.
     """
 
+    start_time = 0
+    """Starting time"""
+
+    curr_time = 0
+    """Current time"""
+
     def __init__(self):
         self.prefix = reserve_original_prefix("_M.S")
 

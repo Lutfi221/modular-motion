@@ -3,7 +3,11 @@ import bpy
 
 from mathutils import Vector
 
-from .utils import reserve_original_prefix
+from .utils import (
+    prop_path_to_data_path,
+    reserve_original_prefix,
+    set_value_by_prop_path,
+)
 
 from .stage import Stage
 from .animation import Animation
@@ -51,7 +55,7 @@ class Mobject:
         base_coll_objs = base_coll.all_objects
 
         # Create origin empty
-        origin_empty = bpy.data.objects.new(self.prefix, None)
+        origin_empty = bpy.data.objects.new(self.prefix + ".", None)
         origin_empty.empty_display_type = "ARROWS"
         origin_empty.scale = (0.1, 0.1, 0.1)
         origin_empty.location = base_coll_objs[0].location
@@ -91,11 +95,39 @@ class Mobject:
             clone.name = self.prefix + "." + originals[i].name
 
     def move_to(self, location: Vector) -> Mobject:
-        self.set_prop_value("ORIGIN", "location", location)
+        self.set_prop_value("", ["location"], location)
 
     @property
     def animate(self) -> MobjectAnimationBuilder:
         return MobjectAnimationBuilder(self)
+
+    def set_prop_value(self, obj_name, prop_path: list[str], value: any) -> Mobject:
+        """Set property value of an object.
+        Use this method to change property values insted of modifying them
+        directly so it will be compatible with :meth:`animate`
+
+        Parameters
+        ----------
+        obj_name : str, optional
+            Object name
+        prop_path : list[str]
+            Property path in the form of a list of string.
+            Such as `["modifiers", "[Array]", "count"]`
+        value : any
+            New value for the property
+
+        Returns
+        -------
+        Mobject
+            Self
+        """
+        data_path = prop_path_to_data_path(prop_path)
+        target = self.prefix + "." + obj_name
+        obj = bpy.data.objects[target]
+
+        obj.keyframe_insert(data_path=data_path, frame=self.stage.curr_time - 1)
+        set_value_by_prop_path(obj, prop_path, (2, 2, 2))
+        obj.keyframe_insert(data_path=data_path, frame=self.stage.curr_time)
 
     def customize(self, property: str, value: str | any) -> Mobject:
         """Customize a mobject property.
