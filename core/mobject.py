@@ -51,7 +51,7 @@ class Mobject:
         base_coll_objs = base_coll.all_objects
 
         # Create origin empty
-        origin_empty = bpy.data.objects.new(self.prefix + "ORIGIN", None)
+        origin_empty = bpy.data.objects.new(self.prefix, None)
         origin_empty.empty_display_type = "ARROWS"
         origin_empty.scale = (0.1, 0.1, 0.1)
         origin_empty.location = base_coll_objs[0].location
