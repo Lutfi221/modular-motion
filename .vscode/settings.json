@@ -1,4 +1,8 @@
 {
     "editor.formatOnSave": true,
-    "autoDocstring.docstringFormat": "sphinx"
+    "autoDocstring.docstringFormat": "numpy",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}\\.."
+    ],
+    "blender.addon.reloadOnSave": true
 }

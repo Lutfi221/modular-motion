@@ -1,2 +1,4 @@
 /planning/*.html
 /planning/blends/*
+__pycache__/
+/scripts/
