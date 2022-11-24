@@ -140,3 +140,38 @@ def set_value_by_prop_path(obj: bpy.types.Object, prop_path: PropPath, value: an
                 setattr(head, elem, value)
                 return
             head = getattr(head, elem)
+
+
+def color_hex_to_vector(hex_str: str) -> tuple[float, float, float]:
+    """Convert hex color code to normalized RGB vector.
+
+    Parameters
+    ----------
+    hex_str : str
+        Hex code
+
+    Returns
+    -------
+    tuple[float, float, float]
+        Normalized RGB vector.
+
+    Examples
+    --------
+    >>> color_hex_to_vector("#ff0")
+    (1.0, 1.0, 0.0)
+    >>> color_hex_to_vector("E87D0D")
+    (0.909, 0.490, 0.050)
+    """
+    hex_str = hex_str.lstrip("#")
+    l = len(hex_str)
+    if l == 6:
+        return tuple(int(hex_str[i : i + 2], 16) / 255 for i in range(0, 6, 2))
+    return tuple(int(2 * hex_str[i : i + 1], 16) / 255 for i in range(0, 3, 1))
+
+
+# def color_hex_to_vector(hex_str: str) -> tuple[float, float, float]:
+#     hex_str = hex_str.lstrip("#")
+#     print(hex_str)
+#     if len(hex_str) <= 4:
+#         return tuple(int(hex_str[i] * 2, 16) / 255 for i in (1, 2, 3))
+#     return tuple(int(hex_str[i : i + 2], 16) / 255 for i in (1, 3, 5))
