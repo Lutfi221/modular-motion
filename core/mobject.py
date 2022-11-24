@@ -3,6 +3,8 @@ import bpy
 
 from mathutils import Vector
 
+from .types import PropPath
+
 from .utils import (
     prop_path_to_data_path,
     reserve_original_prefix,
@@ -10,10 +12,10 @@ from .utils import (
 )
 
 from .stage import Stage
-from .animation import Animation
+from .animation import Animation, PlannedKeyframe
 
 
-class Mobject:
+class Mobject(Animation):
     """Standard Mobject (Modular Motion Object)"""
 
     marks: dict[str, bpy.types.Object]
@@ -34,6 +36,17 @@ class Mobject:
 
     stage: Stage
 
+    _in_animate_mode = False
+    """If Mobject in animate mode.
+    Enabled by accessing :meth:`animate` and disabled by
+    calling :meth:`apply_animation`"""
+
+    _planned_keyframes: list[PlannedKeyframe]
+    """Keyframes to be applied to the timeline.
+    Used while :attr:`_in_animate_mode` is True.
+    Will be emptied every time :meth:`get_planned_keyframes` is called.
+    """
+
     def __init__(self, stage: Stage, location: Vector, base_coll: bpy.types.Collection):
         """Create Mobject
 
@@ -46,11 +59,17 @@ class Mobject:
         base_coll : bpy.types.Collection
             Reference collection to use
         """
-        for obj in bpy.context.selected_objects:
-            obj.select_set(False)
+        # For some reason, when initializing, this attribute can
+        # contain the previous value from the previous instance.
+        # That's why we empty it here.
+        self._planned_keyframes = []
 
         self.stage = stage
         self.prefix = reserve_original_prefix(stage.prefix + ".MOB")
+
+        # Deselect all objects.
+        for obj in bpy.context.selected_objects:
+            obj.select_set(False)
 
         base_coll_objs = base_coll.all_objects
 
@@ -95,13 +114,50 @@ class Mobject:
             clone.name = self.prefix + "." + originals[i].name
 
     def move_to(self, location: Vector) -> Mobject:
+        """Move Mobject to location
+
+        Parameters
+        ----------
+        location : Vector
+            New location
+
+        Returns
+        -------
+        Mobject
+            Self
+        """
         self.set_prop_value("", ["location"], location)
+        return self
 
     @property
-    def animate(self) -> MobjectAnimationBuilder:
-        return MobjectAnimationBuilder(self)
+    def animate(self) -> Mobject:
+        """Enables mobject animation
 
-    def set_prop_value(self, obj_name, prop_path: list[str], value: any) -> Mobject:
+        Returns
+        -------
+        Mobject
+            Self
+        """
+        self._in_animate_mode = True
+        return self
+
+    def get_planned_keyframes(self) -> list[PlannedKeyframe]:
+        """Get planned keyframes for animation.
+        Any regular modular_motion user should not call this.
+        Calling this will also clear :attr:`_planned_keyframes`
+        and disables animation mode.
+
+        Returns
+        -------
+        list[PlannedKeyframe]
+            List of planned keyframes
+        """
+        p = self._planned_keyframes
+        self._planned_keyframes = []
+        self._in_animate_mode = False
+        return p
+
+    def set_prop_value(self, obj_name, prop_path: PropPath, value: any) -> Mobject:
         """Set property value of an object.
         Use this method to change property values insted of modifying them
         directly so it will be compatible with :meth:`animate`
@@ -110,9 +166,8 @@ class Mobject:
         ----------
         obj_name : str, optional
             Object name
-        prop_path : list[str]
-            Property path in the form of a list of string.
-            Such as `["modifiers", "[Array]", "count"]`
+        prop_path : PropPath
+            Property path
         value : any
             New value for the property
 
@@ -121,12 +176,21 @@ class Mobject:
         Mobject
             Self
         """
-        data_path = prop_path_to_data_path(prop_path)
         target = self.prefix + "." + obj_name
         obj = bpy.data.objects[target]
+        if self._in_animate_mode:
+            self._planned_keyframes.append(
+                {"object": obj, "type": "start", "prop_path": prop_path, "value": None}
+            )
+            self._planned_keyframes.append(
+                {"object": obj, "type": "end", "prop_path": prop_path, "value": value}
+            )
+            return
+
+        data_path = prop_path_to_data_path(prop_path)
 
         obj.keyframe_insert(data_path=data_path, frame=self.stage.curr_time - 1)
-        set_value_by_prop_path(obj, prop_path, (2, 2, 2))
+        set_value_by_prop_path(obj, prop_path, value)
         obj.keyframe_insert(data_path=data_path, frame=self.stage.curr_time)
 
     def customize(self, property: str, value: str | any) -> Mobject:
@@ -145,16 +209,3 @@ class Mobject:
             Self
         """
         pass
-
-
-class MobjectAnimationBuilder(Mobject, Animation):
-    mobject: Mobject
-
-    def __init__(self, mobject: Mobject):
-        self.mobject = mobject
-
-    def __getattr__(self, name) -> any:
-        if name == "set_prop_value":
-            print("hahaha! overridden")
-        attr = getattr(self.mobject, name)
-        return attr

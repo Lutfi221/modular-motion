@@ -2,7 +2,13 @@ from abc import abstractmethod
 import bpy
 from mathutils import Vector
 
-from .utils import reserve_original_prefix
+from .animation import Animation, PlannedKeyframe
+
+from .utils import (
+    prop_path_to_data_path,
+    reserve_original_prefix,
+    set_value_by_prop_path,
+)
 
 
 class Stage:
@@ -33,7 +39,7 @@ class Stage:
         """Construct and populate the stage."""
         pass
 
-    def play(self, *args, duration=1):
+    def play(self, *args, duration=24):
         """Play animations
 
         Parameters
@@ -43,4 +49,32 @@ class Stage:
         duration : int, optional
             Duration, by default 1
         """
-        pass
+        for anim in args:
+            anim: Animation
+            planned_keyframes = anim.get_planned_keyframes()
+
+            # We need to insert the starting keyframes first,
+            # and then the ending keyframes.
+            # It is done in this order so the ending keyframe
+            # don't affect the property value when we're inserting
+            # the starting keyframe.
+            for type in ["start", "end"]:
+                for k in filter(lambda k: k["type"] == type, planned_keyframes):
+                    k: PlannedKeyframe
+
+                    if type == "start":
+                        frame = self.curr_time
+                    else:
+                        frame = self.curr_time + duration
+
+                    if k["value"] is not None:
+                        set_value_by_prop_path(k["object"], k["prop_path"], k["value"])
+
+                    k["object"].keyframe_insert(
+                        prop_path_to_data_path(k["prop_path"]),
+                        frame=frame,
+                    )
+        self.curr_time += duration
+
+    def wait(self, duration=24):
+        self.curr_time += duration

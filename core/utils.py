@@ -1,6 +1,8 @@
 import bpy
 from mathutils import Vector
 
+from .types import PropPath
+
 
 class Grid:
     """Access a point (Vector) in the grid via `grid[x][y][z]`"""
@@ -60,8 +62,9 @@ def reserve_original_prefix(base_prefix: str, post="") -> str:
     return prefix
 
 
-def prop_path_to_data_path(prop_path: list[str]) -> str:
-    """Converts prop_path to data_path
+def prop_path_to_data_path(prop_path: PropPath) -> str:
+    """Converts prop_path to data_path that can be used
+    in Blender's `keyframe_insert`.
 
     Parameters
     ----------
@@ -86,7 +89,7 @@ def prop_path_to_data_path(prop_path: list[str]) -> str:
     return out
 
 
-def set_value_by_prop_path(obj: bpy.types.Object, prop_path: list[str], value: any):
+def set_value_by_prop_path(obj: bpy.types.Object, prop_path: PropPath, value: any):
     """Sets the value pointed by the prop_path
 
     Parameters
