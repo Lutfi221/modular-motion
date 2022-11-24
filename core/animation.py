@@ -22,5 +22,5 @@ class PlannedKeyframe(TypedDict):
 
 class Animation:
     @abstractmethod
-    def get_planned_keyframes(self) -> list[PlannedKeyframe]:
+    def dump_planned_keyframes(self) -> list[PlannedKeyframe]:
         pass

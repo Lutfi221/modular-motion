@@ -1,7 +1,7 @@
 import bpy
 from mathutils import Vector
 
-from .types import PropPath
+from .types import ExtendedPropPath, PropPath
 
 PREFIX_LIST_TEXT_NAME = "_M.reserved_prefixes"
 

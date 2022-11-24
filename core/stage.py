@@ -74,7 +74,7 @@ class Stage:
         """
         for anim in args:
             anim: Animation
-            planned_keyframes = anim.get_planned_keyframes()
+            planned_keyframes = anim.dump_planned_keyframes()
 
             # We need to insert the starting keyframes first,
             # and then the ending keyframes.

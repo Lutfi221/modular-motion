@@ -1,9 +1,12 @@
 from __future__ import annotations
+from abc import abstractmethod
 import bpy
 
 from mathutils import Vector
 
-from .types import PropPath
+from .errors import CustomPropertyUnanimatable
+
+from .types import ExtendedPropPath, PropPath
 
 from .utils import (
     prop_path_to_data_path,
@@ -26,6 +29,10 @@ class Mobject(Animation):
     """List of playable actions for the Mobject.
     """
 
+    custom_properties: dict[str, CustomMobjectProperty]
+    """Custom user-defined Mobject properties.
+    """
+
     prefix: str
     """Mobject prefix.
     """
@@ -44,7 +51,7 @@ class Mobject(Animation):
     _planned_keyframes: list[PlannedKeyframe]
     """Keyframes to be applied to the timeline.
     Used while :attr:`_in_animate_mode` is True.
-    Will be emptied every time :meth:`get_planned_keyframes` is called.
+    Will be emptied every time :meth:`dump_planned_keyframes` is called.
     """
 
     def __init__(self, stage: Stage, location: Vector, base_coll: bpy.types.Collection):
@@ -141,7 +148,7 @@ class Mobject(Animation):
         self._in_animate_mode = True
         return self
 
-    def get_planned_keyframes(self) -> list[PlannedKeyframe]:
+    def dump_planned_keyframes(self) -> list[PlannedKeyframe]:
         """Get planned keyframes for animation.
         Any regular modular_motion user should not call this.
         Calling this will also clear :attr:`_planned_keyframes`
@@ -194,12 +201,12 @@ class Mobject(Animation):
         obj.keyframe_insert(data_path=data_path, frame=self.stage.curr_time)
 
     def customize(self, property: str, value: str | any) -> Mobject:
-        """Customize a mobject property.
+        """Customize a user-defined mobject property.
 
         Parameters
         ----------
         property : str
-            Property name
+            Custom property name
         value : str | any
             Value
 
@@ -208,4 +215,108 @@ class Mobject(Animation):
         Mobject
             Self
         """
+        prop = self.custom_properties[property]
+        if self._in_animate_mode:
+            prop.set_animate_mode(True)
+            self._planned_keyframes.extend(prop.set_value(value))
+            prop.set_animate_mode(False)
+        else:
+            prop.set_value(value)
+        return self
+
+
+class CustomMobjectProperty:
+    """User-defined mobject property
+
+    Raises
+    ------
+    CustomPropertyUnanimatable
+        An attempt to animate an unanimatable property was made.
+    """
+
+    mobject: Mobject
+    is_animatable = False
+    _in_animate_mode = False
+
+    def __init__(self, mobject):
+        self.mobject = mobject
+
+    @abstractmethod
+    def set_value(self, value: any) -> list[PlannedKeyframe] | None:
+        """Set value of the custom mobject property.
+
+        Parameters
+        ----------
+        value : any
+            Value
+
+        Returns
+        -------
+        list[PlannedKeyframe]
+            If custom property is in animate mode (enabled via :meth:`set_animate_mode`),
+            then it will return a list of planned keyframes instead of directly modifying the
+            timeline.
+        """
         pass
+
+    def set_animate_mode(self, mode: bool):
+        if not self.is_animatable:
+            raise CustomPropertyUnanimatable()
+        self._in_animate_mode = mode
+
+
+class SimpleCustomMobjectProperty(CustomMobjectProperty):
+    e_prop_paths = list[ExtendedPropPath]
+
+    def __init__(
+        self, mobject: Mobject, e_prop_paths: list[ExtendedPropPath], animatable=False
+    ):
+        """Create a simple :class:`CustomMobjectProperty` from extended property paths.
+
+        Parameters
+        ----------
+        mobject : Mobject
+            Parent mobject
+        e_prop_paths : list[ExtendedPropPath]
+            A list of :type:`ExtendedPropPath`
+        animatable : bool, optional
+            If custom property can be animated, by default False
+        """
+        super().__init__(mobject)
+        self.e_prop_paths = e_prop_paths
+        self.is_animatable = animatable
+
+    def set_value(self, value: any) -> list[PlannedKeyframe] | None:
+        planned_keyframes = []
+
+        for e_prop_path in self.e_prop_paths:
+            obj = bpy.data.objects[self.mobject.prefix + "." + e_prop_path[0]]
+            prop_path = e_prop_path[1:]
+            data_path = prop_path_to_data_path(prop_path)
+
+            if self._in_animate_mode:
+                planned_keyframes.append(
+                    {
+                        "object": obj,
+                        "type": "start",
+                        "prop_path": prop_path,
+                        "value": None,
+                    }
+                )
+                planned_keyframes.append(
+                    {
+                        "object": obj,
+                        "type": "end",
+                        "prop_path": prop_path,
+                        "value": value,
+                    }
+                )
+                continue
+
+            obj.keyframe_insert(
+                data_path=data_path, frame=self.mobject.stage.curr_time - 1
+            )
+            set_value_by_prop_path(obj, prop_path, value)
+            obj.keyframe_insert(data_path=data_path, frame=self.mobject.stage.curr_time)
+
+        return planned_keyframes
