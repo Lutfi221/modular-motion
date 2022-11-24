@@ -2,10 +2,13 @@ from abc import abstractmethod
 import bpy
 from mathutils import Vector
 
+from .errors import UndefinedStageColl
+
 from .animation import Animation, PlannedKeyframe
 
 from .utils import (
     prop_path_to_data_path,
+    release_prefix,
     reserve_original_prefix,
     set_value_by_prop_path,
 )
@@ -32,7 +35,27 @@ class Stage:
     """Current time"""
 
     def __init__(self):
+        if not hasattr(self, "coll"):
+            raise UndefinedStageColl()
+
+        # Remove every subcollections in the stage collection.
+        for child in self.coll.children_recursive:
+            child: bpy.types.Collection
+            if child.name.endswith(" [stage_prefix]"):
+                # Get the previous stage's prefix
+                prev_prefix = child.name[:-15]
+                release_prefix(prev_prefix)
+
+            bpy.data.collections.remove(child)
+
+        # Remove every objects in the stage collection
+        for obj in self.coll.all_objects:
+            obj: bpy.types.Object
+            bpy.data.objects.remove(obj)
+
         self.prefix = reserve_original_prefix("_M.S")
+        prefix_coll = bpy.data.collections.new(self.prefix + " [stage_prefix]")
+        self.coll.children.link(prefix_coll)
 
     @abstractmethod
     def construct(self):

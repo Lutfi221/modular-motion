@@ -3,6 +3,8 @@ from mathutils import Vector
 
 from .types import PropPath
 
+PREFIX_LIST_TEXT_NAME = "_M.reserved_prefixes"
+
 
 class Grid:
     """Access a point (Vector) in the grid via `grid[x][y][z]`"""
@@ -31,21 +33,20 @@ def reserve_original_prefix(base_prefix: str, post="") -> str:
     str
         Original numbered prefix
     """
-    prefix_list_text_name = "_M.reserved_prefixes"
 
-    if prefix_list_text_name in bpy.data.texts:
-        prefix_text = bpy.data.texts[prefix_list_text_name]
+    if PREFIX_LIST_TEXT_NAME in bpy.data.texts:
+        prefix_text = bpy.data.texts[PREFIX_LIST_TEXT_NAME]
     else:
-        prefix_text = bpy.data.texts.new(prefix_list_text_name)
+        prefix_text = bpy.data.texts.new(PREFIX_LIST_TEXT_NAME)
         prefix_text.from_string(
             (
                 "# List of reserved prefixes in use by modular_motion.\n"
-                "# Do not delete or change the contents of this text.\n"
+                "# Do not delete or change the contents of this text.\n\n"
             )
         )
 
     # Move cursor to the last line
-    prefix_text.cursor_set(len(prefix_text.lines))
+    prefix_text.cursor_set(999999)
 
     def is_prefix_reserved(prefix: str) -> bool:
         return any([line.body.startswith(prefix) for line in prefix_text.lines])
@@ -58,8 +59,34 @@ def reserve_original_prefix(base_prefix: str, post="") -> str:
         prefix = base_prefix + str(counter).zfill(2)
 
     prefix_text.write(prefix + "\n")
+    prefix_text.cursor_set(999999)
 
     return prefix
+
+
+def release_prefix(prefix: str):
+    """Remove prefix from the reserved prefix list.
+
+    Parameters
+    ----------
+    prefix : str
+        Prefix to remove
+    """
+    if PREFIX_LIST_TEXT_NAME not in bpy.data.texts:
+        return
+
+    prefix_text = bpy.data.texts[PREFIX_LIST_TEXT_NAME]
+    body: str = prefix_text.as_string()
+    new_body = ""
+
+    for line in body.split("\n"):
+        if line == "":
+            continue
+        if not line.startswith(prefix):
+            new_body += line + "\n"
+
+    prefix_text.from_string(new_body)
+    prefix_text.cursor_set(999999)
 
 
 def prop_path_to_data_path(prop_path: PropPath) -> str:
