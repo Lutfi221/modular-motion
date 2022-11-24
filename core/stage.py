@@ -38,6 +38,11 @@ class Stage:
         if not hasattr(self, "coll"):
             raise UndefinedStageColl()
 
+        # Remove every objects in the stage collection
+        for obj in self.coll.all_objects:
+            obj: bpy.types.Object
+            bpy.data.objects.remove(obj)
+
         # Remove every subcollections in the stage collection.
         for child in self.coll.children_recursive:
             child: bpy.types.Collection
@@ -47,11 +52,6 @@ class Stage:
                 release_prefix(prev_prefix)
 
             bpy.data.collections.remove(child)
-
-        # Remove every objects in the stage collection
-        for obj in self.coll.all_objects:
-            obj: bpy.types.Object
-            bpy.data.objects.remove(obj)
 
         self.prefix = reserve_original_prefix("_M.S")
         prefix_coll = bpy.data.collections.new(self.prefix + " [stage_prefix]")
