@@ -6,9 +6,11 @@ from mathutils import Vector
 
 from .errors import CustomPropertyUnanimatable
 
-from .types import ExtendedPropPath, PropPath
+from .types import DomainRangeMap, ExtendedPropPath, PropPath
 
 from .utils import (
+    interp,
+    keyframe_insert,
     prop_path_to_data_path,
     reserve_original_prefix,
     set_value_by_prop_path,
@@ -196,9 +198,9 @@ class Mobject(Animation):
 
         data_path = prop_path_to_data_path(prop_path)
 
-        obj.keyframe_insert(data_path=data_path, frame=self.stage.curr_time - 1)
+        keyframe_insert(obj, data_path, self.stage.curr_time - 1)
         set_value_by_prop_path(obj, prop_path, value)
-        obj.keyframe_insert(data_path=data_path, frame=self.stage.curr_time)
+        keyframe_insert(obj, data_path, self.stage.curr_time)
 
     def customize(self, property: str, value: str | any) -> Mobject:
         """Customize a user-defined mobject property.
@@ -267,6 +269,10 @@ class CustomMobjectProperty:
 
 class SimpleCustomMobjectProperty(CustomMobjectProperty):
     e_prop_paths: list[ExtendedPropPath]
+    _mappings: list[DomainRangeMap] = []
+    """List of domain range mappings.
+    Index must match with the corresponding :attr:`e_prop_paths`.
+    """
 
     def __init__(
         self, mobject: Mobject, e_prop_paths: list[ExtendedPropPath], animatable=False
@@ -286,10 +292,33 @@ class SimpleCustomMobjectProperty(CustomMobjectProperty):
         self.e_prop_paths = e_prop_paths
         self.is_animatable = animatable
 
+    def set_mappings(
+        self, mappings: list[DomainRangeMap]
+    ) -> SimpleCustomMobjectProperty:
+        """Sets mappings for this custom property.
+
+        Parameters
+        ----------
+        mappings : list[DomainRangeMap]
+            List of domain range mappings.
+            Index must match with the corresponding :attr:`e_prop_paths`.
+        """
+        self._mappings = mappings
+        return self
+
+    def map(self, value: float, mapping: DomainRangeMap) -> float:
+        return interp(value, *mapping)
+
     def set_value(self, value: any) -> list[PlannedKeyframe] | None:
         planned_keyframes = []
 
-        for e_prop_path in self.e_prop_paths:
+        for i, e_prop_path in enumerate(self.e_prop_paths):
+            mapping = self._mappings[i] if i < len(self._mappings) else None
+            if mapping:
+                x = self.map(value, mapping)
+            else:
+                x = value
+
             obj = bpy.data.objects[self.mobject.prefix + "." + e_prop_path[0]]
             prop_path = e_prop_path[1:]
             data_path = prop_path_to_data_path(prop_path)
@@ -308,15 +337,13 @@ class SimpleCustomMobjectProperty(CustomMobjectProperty):
                         "object": obj,
                         "type": "end",
                         "prop_path": prop_path,
-                        "value": value,
+                        "value": x,
                     }
                 )
                 continue
 
-            obj.keyframe_insert(
-                data_path=data_path, frame=self.mobject.stage.curr_time - 1
-            )
-            set_value_by_prop_path(obj, prop_path, value)
-            obj.keyframe_insert(data_path=data_path, frame=self.mobject.stage.curr_time)
+            keyframe_insert(obj, data_path, self.mobject.stage.curr_time - 1)
+            set_value_by_prop_path(obj, prop_path, x)
+            keyframe_insert(obj, data_path, self.mobject.stage.curr_time)
 
         return planned_keyframes

@@ -1,7 +1,7 @@
 import bpy
 from mathutils import Vector
 
-from .types import ExtendedPropPath, PropPath
+from .types import PropPath
 
 PREFIX_LIST_TEXT_NAME = "_M.reserved_prefixes"
 
@@ -107,6 +107,9 @@ def prop_path_to_data_path(prop_path: PropPath) -> str:
     prev = False
     for elem in prop_path:
         if elem.startswith("["):
+            if elem[1:-1].isdigit():
+                out += "[" + elem[1:-1] + "]"
+                continue
             out += '["' + elem[1:-1] + '"]'
         else:
             if prev:
@@ -132,6 +135,9 @@ def set_value_by_prop_path(obj: bpy.types.Object, prop_path: PropPath, value: an
     for i, elem in enumerate(prop_path):
         if elem.startswith("["):
             if i == len(prop_path) - 1:
+                if elem[1:-1].isdigit():
+                    head[int(elem[1:-1])] = value
+                    continue
                 head[elem[1:-1]] = value
                 return
             head = head[elem[1:-1]]
@@ -169,9 +175,44 @@ def color_hex_to_vector(hex_str: str) -> tuple[float, float, float]:
     return tuple(int(2 * hex_str[i : i + 1], 16) / 255 for i in range(0, 3, 1))
 
 
-# def color_hex_to_vector(hex_str: str) -> tuple[float, float, float]:
-#     hex_str = hex_str.lstrip("#")
-#     print(hex_str)
-#     if len(hex_str) <= 4:
-#         return tuple(int(hex_str[i] * 2, 16) / 255 for i in (1, 2, 3))
-#     return tuple(int(hex_str[i : i + 2], 16) / 255 for i in (1, 3, 5))
+def interp(x: float, min: float, max: float, new_min: float, new_max: float):
+    return ((x - min) / (max - min)) * (new_max - new_min) + new_min
+
+
+def keyframe_insert(obj: bpy.types.Object, path: str | PropPath, frame: float):
+    """Insert keyframe to the object's property.
+
+    If you were to input a path with a last index, such as
+    `path='location[1]'`, this function assumes
+    that last index is only a single digit. So a path like
+    `path='property[12]'` will break the function.
+
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        Blender object
+    path : str | PropPath
+        Data path or :type:`PropPath`
+    """
+    index = -1
+    data_path: str
+
+    if type(path) == str:
+        if path[-2].isdigit():
+            index = int(path[-2])
+            data_path = path[:-3]
+        else:
+            data_path = path
+    else:
+        try:
+            has_last_index = path[-1][-2].isdigit()
+        except IndexError:
+            pass
+
+        if has_last_index:
+            index = int(path[-1][-2])
+            data_path = prop_path_to_data_path(path)[:-3]
+        else:
+            data_path = prop_path_to_data_path(path)
+
+    obj.keyframe_insert(data_path, index=index, frame=frame)

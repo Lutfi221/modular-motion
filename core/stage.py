@@ -7,7 +7,7 @@ from .errors import UndefinedStageColl
 from .animation import Animation, PlannedKeyframe
 
 from .utils import (
-    prop_path_to_data_path,
+    keyframe_insert,
     release_prefix,
     reserve_original_prefix,
     set_value_by_prop_path,
@@ -93,10 +93,7 @@ class Stage:
                     if k["value"] is not None:
                         set_value_by_prop_path(k["object"], k["prop_path"], k["value"])
 
-                    k["object"].keyframe_insert(
-                        prop_path_to_data_path(k["prop_path"]),
-                        frame=frame,
-                    )
+                    keyframe_insert(k["object"], k["prop_path"], frame)
         self.curr_time += duration
 
     def wait(self, duration=24):
