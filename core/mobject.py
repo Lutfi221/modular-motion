@@ -56,7 +56,13 @@ class Mobject(Animation):
     Will be emptied every time :meth:`dump_planned_keyframes` is called.
     """
 
-    def __init__(self, stage: Stage, location: Vector, base_coll: bpy.types.Collection):
+    def __init__(
+        self,
+        stage: Stage,
+        location: Vector,
+        base_coll: bpy.types.Collection,
+        duplicate_linked=True,
+    ):
         """Create Mobject
 
         Parameters
@@ -67,6 +73,9 @@ class Mobject(Animation):
             Initial Mobject location (relative to stage)
         base_coll : bpy.types.Collection
             Reference collection to use
+        duplicate_linked : bool
+            Should the newly created Blender objects
+            be linked to the original base object, defaults to True
         """
         # For some reason, when initializing, this attribute can
         # contain the previous value from the previous instance.
@@ -92,7 +101,7 @@ class Mobject(Animation):
 
         # Recursively duplicate the contents of the base collection
         with bpy.context.temp_override(selected_objects=base_coll_objs):
-            bpy.ops.object.duplicate()
+            bpy.ops.object.duplicate(linked=duplicate_linked)
 
         # We only need to parent the objects at the top of the hierarchy.
         # Therefore we won't break the already existing parent-child relations.
@@ -237,7 +246,7 @@ class CustomMobjectProperty:
     """
 
     mobject: Mobject
-    is_animatable = False
+    is_animatable = True
     _in_animate_mode = False
 
     def __init__(self, mobject):
@@ -275,7 +284,7 @@ class SimpleCustomMobjectProperty(CustomMobjectProperty):
     """
 
     def __init__(
-        self, mobject: Mobject, e_prop_paths: list[ExtendedPropPath], animatable=False
+        self, mobject: Mobject, e_prop_paths: list[ExtendedPropPath], animatable=True
     ):
         """Create a simple :class:`CustomMobjectProperty` from extended property paths.
 
@@ -286,7 +295,7 @@ class SimpleCustomMobjectProperty(CustomMobjectProperty):
         e_prop_paths : list[ExtendedPropPath]
             A list of :type:`ExtendedPropPath`
         animatable : bool, optional
-            If custom property can be animated, by default False
+            If custom property can be animated, by default True
         """
         super().__init__(mobject)
         self.e_prop_paths = e_prop_paths
