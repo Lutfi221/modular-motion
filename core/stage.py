@@ -1,4 +1,6 @@
+from __future__ import annotations
 from abc import abstractmethod
+import re
 import bpy
 from mathutils import Vector
 
@@ -19,6 +21,13 @@ class Stage:
     """Collection used for stage output
     """
 
+    marker_coll: bpy.types.Collection = None
+    """Collection with marker objects."""
+
+    markers: dict[str, Marker] = {}
+    """Dictionary of markers.
+    """
+
     origin = Vector((0, 0, 0))
     """The stage origin (global)
     """
@@ -37,6 +46,17 @@ class Stage:
     def __init__(self):
         if not hasattr(self, "coll"):
             raise UndefinedStageColl()
+
+        if self.marker_coll:
+            p = r"\[.+\]"
+            for obj in self.marker_coll.objects:
+                m = re.search(p, obj.name)
+                name: str
+                if m:
+                    name = m.group()[1:-1]
+                else:
+                    name = obj.name
+                self.markers[name] = Marker(self, obj)
 
         # Remove every objects in the stage collection
         for obj in self.coll.all_objects:
@@ -98,3 +118,18 @@ class Stage:
 
     def wait(self, duration=24):
         self.curr_time += duration
+
+
+class Marker:
+    """User movable marker."""
+
+    location: Vector
+    """Location relative to stage
+    """
+    scale: Vector
+    rotation: Vector
+
+    def __init__(self, stage: Stage, obj: bpy.types.Object):
+        self.location = obj.matrix_world.translation - stage.origin
+        self.scale = obj.matrix_world.to_scale()
+        self.rotation = obj.matrix_world.to_euler()
