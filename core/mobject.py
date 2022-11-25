@@ -266,7 +266,7 @@ class CustomMobjectProperty:
 
 
 class SimpleCustomMobjectProperty(CustomMobjectProperty):
-    e_prop_paths = list[ExtendedPropPath]
+    e_prop_paths: list[ExtendedPropPath]
 
     def __init__(
         self, mobject: Mobject, e_prop_paths: list[ExtendedPropPath], animatable=False
