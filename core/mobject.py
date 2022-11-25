@@ -115,7 +115,7 @@ class Mobject(Animation):
             obj.matrix_parent_inverse = origin_empty.matrix_local.inverted()
 
         # Move the empty origin to its intended location
-        origin_empty.location = location
+        origin_empty.location = location + self.stage.origin
 
         # Move all objects to the stage collection
         for obj in bpy.context.selected_objects:
@@ -144,7 +144,7 @@ class Mobject(Animation):
         Mobject
             Self
         """
-        self.set_prop_value("", ["location"], location)
+        self.set_prop_value("", ["location"], location + self.stage.origin)
         return self
 
     @property
