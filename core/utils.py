@@ -6,16 +6,46 @@ from .types import PropPath
 PREFIX_LIST_TEXT_NAME = "_M.reserved_prefixes"
 
 
-class Grid:
-    """Access a point (Vector) in the grid via `grid[x][y][z]`"""
+def generate_grid_points(
+    a: Vector, b: Vector, columns: int, rows: int, height: int
+) -> list[Vector]:
+    """Generate a grid of points.
 
-    def __init__(
-        self, corner_a: Vector, corner_b: Vector, columns: int, rows: int, height: int
-    ):
-        pass
+    Parameters
+    ----------
+    a : Vector
+        Bottom left corner of the grid
+    b : Vector
+        Top right corner of the grid
+    columns : int
+        Amount of columns
+    rows : int
+        Amount of rows
+    height : int
+        Amount of layers
 
-    def get_points(self) -> list[Vector]:
-        pass
+    Returns
+    -------
+    list[Vector]
+        List of points
+    """
+    points: list[Vector] = []
+    delta_x = (b[0] - a[0]) / (columns - 1) if columns != 1 else 0
+    delta_y = (b[1] - a[1]) / (rows - 1) if rows != 1 else 0
+    delta_z = (b[2] - a[2]) / (height - 1) if height != 1 else 0
+    for x in range(columns):
+        for y in range(rows):
+            for z in range(height):
+                points.append(
+                    Vector(
+                        (
+                            a[0] + delta_x * x,
+                            a[1] + delta_y * y,
+                            a[2] + delta_z * z,
+                        )
+                    )
+                )
+    return points
 
 
 def reserve_original_prefix(base_prefix: str, post="") -> str:
