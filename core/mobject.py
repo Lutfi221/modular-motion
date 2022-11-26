@@ -147,6 +147,87 @@ class Mobject(Animation):
         self.set_prop_value("", ["location"], location + self.stage.origin)
         return self
 
+    def shift(self, offset: Vector) -> Mobject:
+        """Shift mobject by offset.
+
+        Parameters
+        ----------
+        offset : Vector
+            Translation vector
+
+        Returns
+        -------
+        Mobject
+            Self
+        """
+        self.move_to(self.object.location + offset)
+        return self
+
+    def set_rotation(self, rotation_euler: Vector) -> Mobject:
+        """Set mobject rotation. Replaces previous rotation.
+
+        Parameters
+        ----------
+        rotation_euler : Vector
+            Euler rotation vector
+
+        Returns
+        -------
+        Mobject
+            Self
+        """
+        self.set_prop_value("", ["rotation_euler"], rotation_euler)
+        return self
+
+    def rotate(self, rotation_euler: Vector) -> Mobject:
+        """Rotate mobject. Rotation vector is added to previous rotation.
+
+        Parameters
+        ----------
+        rotation_euler : Vector
+            Euler rotation vector
+
+        Returns
+        -------
+        Mobject
+            Self
+        """
+        self.set_rotation(rotation_euler + self.object.rotation_euler)
+        return self
+
+    def set_scale(self, scale: Vector) -> Mobject:
+        """Set mobject scale. Replaces previous scale.
+
+        Parameters
+        ----------
+        scale : Vector
+            Scale vector
+
+        Returns
+        -------
+        Mobject
+            Self
+        """
+        self.set_prop_value("", ["scale"], scale)
+        return self
+
+    def scale(self, scale: Vector) -> Mobject:
+        """Scales mobject by multiplying new scale with
+        the previous scale.
+
+        Parameters
+        ----------
+        scale : Vector
+            Scale vector
+
+        Returns
+        -------
+        Mobject
+            Self
+        """
+        self.set_scale(self.object.scale * scale)
+        return self
+
     @property
     def animate(self) -> Mobject:
         """Enables mobject animation
@@ -203,13 +284,14 @@ class Mobject(Animation):
             self._planned_keyframes.append(
                 {"object": obj, "type": "end", "prop_path": prop_path, "value": value}
             )
-            return
+            return self
 
         data_path = prop_path_to_data_path(prop_path)
 
         keyframe_insert(obj, data_path, self.stage.curr_time - 1)
         set_value_by_prop_path(obj, prop_path, value)
         keyframe_insert(obj, data_path, self.stage.curr_time)
+        return self
 
     def customize(self, property: str, value: str | any) -> Mobject:
         """Customize a user-defined mobject property.
