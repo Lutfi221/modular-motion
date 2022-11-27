@@ -114,6 +114,9 @@ class Stage:
                         set_value_by_prop_path(k["object"], k["prop_path"], k["value"])
 
                     keyframe_insert(k["object"], k["prop_path"], frame)
+
+            anim.apply_animation(self.curr_time, self.curr_time + duration)
+
         self.curr_time += duration
 
     def wait(self, duration=24):

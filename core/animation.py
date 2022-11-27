@@ -10,8 +10,8 @@ class PlannedKeyframe(TypedDict):
     type: Literal["start"] | Literal["end"]
     """Type of keyframe.
     """
-    object: bpy.types.Object
-    """Blender object
+    object: bpy.types.ID
+    """Blender data-block
     """
     prop_path: PropPath
     value: Union[any, None]
@@ -23,4 +23,24 @@ class PlannedKeyframe(TypedDict):
 class Animation:
     @abstractmethod
     def dump_planned_keyframes(self) -> list[PlannedKeyframe]:
+        """Dump and empty out planned keyframes.
+
+        Returns
+        -------
+        list[PlannedKeyframe]
+            List of planned keyframes
+        """
+        return []
+
+    @abstractmethod
+    def apply_animation(self, start: float, end: float):
+        """Apply animation to the timeline.
+
+        Parameters
+        ----------
+        start : float
+            Start time
+        end : float
+            End time
+        """
         pass

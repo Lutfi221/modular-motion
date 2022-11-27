@@ -1,3 +1,4 @@
+import re
 import bpy
 from mathutils import Vector
 
@@ -119,6 +120,16 @@ def release_prefix(prefix: str):
     prefix_text.cursor_set(999999)
 
 
+def data_path_to_prop_path(data_path: str):
+    dp = data_path.replace('["', ".[").replace('"]', "]")
+    m = re.search(r"\[\d+\]", dp)
+    if m:
+        i = m.start()
+        dp = dp[:i] + "." + dp[i:]
+    elems = dp.split(".")
+    return elems
+
+
 def prop_path_to_data_path(prop_path: PropPath) -> str:
     """Converts prop_path to data_path that can be used
     in Blender's `keyframe_insert`.
@@ -162,19 +173,27 @@ def set_value_by_prop_path(obj: bpy.types.Object, prop_path: PropPath, value: an
         Value to change to
     """
     head = obj
+    prev_head = None
     for i, elem in enumerate(prop_path):
+        # If the element is a subscript or an index, such as
+        # `[1]`, `[2]`, `[foo]`
         if elem.startswith("["):
             if i == len(prop_path) - 1:
                 if elem[1:-1].isdigit():
-                    head[int(elem[1:-1])] = value
-                    continue
+                    if hasattr(head, "__getitem__"):
+                        head[int(elem[1:-1])] = value
+                    else:
+                        setattr(prev_head, prop_path[i - 1], value)
+                    return
                 head[elem[1:-1]] = value
                 return
+            prev_head = head
             head = head[elem[1:-1]]
         else:
             if i == len(prop_path) - 1:
                 setattr(head, elem, value)
                 return
+            prev_head = head
             head = getattr(head, elem)
 
 
@@ -209,7 +228,7 @@ def interp(x: float, min: float, max: float, new_min: float, new_max: float):
     return ((x - min) / (max - min)) * (new_max - new_min) + new_min
 
 
-def keyframe_insert(obj: bpy.types.Object, path: str | PropPath, frame: float):
+def keyframe_insert(obj: bpy.types.ID, path: str | PropPath, frame: float):
     """Insert keyframe to the object's property.
 
     If you were to input a path with a last index, such as
@@ -219,7 +238,7 @@ def keyframe_insert(obj: bpy.types.Object, path: str | PropPath, frame: float):
 
     Parameters
     ----------
-    obj : bpy.types.Object
+    obj : bpy.types.ID
         Blender object
     path : str | PropPath
         Data path or :type:`PropPath`
@@ -245,4 +264,8 @@ def keyframe_insert(obj: bpy.types.Object, path: str | PropPath, frame: float):
         else:
             data_path = prop_path_to_data_path(path)
 
-    obj.keyframe_insert(data_path, index=index, frame=frame)
+    try:
+        obj.keyframe_insert(data_path, index=index, frame=frame)
+    except TypeError:
+        # If the property is not an array
+        obj.keyframe_insert(data_path, frame=frame)
