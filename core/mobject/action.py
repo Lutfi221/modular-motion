@@ -74,7 +74,7 @@ class ActionAnimation(Animation):
                 target, base_fcurve.data_path, base_fcurve.array_index
             )
 
-            while i < len(kps):
+            while i < len(kps) and kps[i].co[0] <= self.base_end_time:
                 base_kp = kps[i]
                 set_value_by_prop_path(target, prop_path, base_kp.co[1])
                 time = round(
