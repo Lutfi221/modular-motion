@@ -3,7 +3,7 @@ import bpy
 
 from mathutils import Vector
 
-from .mobject import Mobject
+from . import Mobject
 from .action import generate_actions
 from ..stage import Stage
 from ..animation import Animation

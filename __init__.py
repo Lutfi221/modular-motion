@@ -7,7 +7,7 @@ bl_info = {
 }
 
 
-from .core.mobject.mobject import Mobject
+from .core.mobject import Mobject
 from .core.mobject.based_mobject import BasedMobject
 from .core.animation import Animation
 from .core.stage import Stage

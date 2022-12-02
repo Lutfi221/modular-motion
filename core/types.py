@@ -1,11 +1,3 @@
-from .stage import Stage
-
-
-class StageEntity:
-    prefix: str
-    stage: Stage
-
-
 PropPath = list[str]
 """Path to a Blender object property.
 

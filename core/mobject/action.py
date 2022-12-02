@@ -3,7 +3,7 @@ from math import floor
 from typing import TypedDict
 import bpy
 
-from .mobject import Mobject
+from . import Mobject
 
 from ..utils import (
     data_path_to_prop_path,
