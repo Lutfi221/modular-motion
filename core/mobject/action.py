@@ -49,6 +49,7 @@ class ActionAnimation(Animation):
         self.actors = actors
 
     def apply_animation(self, start: float, end: float):
+        scale = (end - start) / (self.base_end_time - self.base_start_time)
         for actor in self.actors:
             base_name = actor["root"]["name"]
             base_fcurve = actor["base_fcurve"]
@@ -58,31 +59,99 @@ class ActionAnimation(Animation):
                 self.mobject.prefix + "." + base_name
             ]
 
-            kp = base_fcurve.keyframe_points
+            kps = base_fcurve.keyframe_points
             i = 0
 
             # Increment `i` until keyframe `kp[i]` is inside the action window
             # (between `self.base_start_time` and `self.base_end_time`).
-            while i < len(kp):
-                base_frame = kp[i].co[0]
+            while i < len(kps):
+                base_frame = kps[i].co[0]
                 if base_frame >= self.base_start_time:
                     break
                 i += 1
 
-            while i < len(kp):
-                set_value_by_prop_path(target, prop_path, kp[i].co[1])
-                keyframe_insert(
-                    target,
-                    data_path,
+            target_fcurve = self._get_fcurve(
+                target, base_fcurve.data_path, base_fcurve.array_index
+            )
+
+            while i < len(kps):
+                base_kp = kps[i]
+                set_value_by_prop_path(target, prop_path, base_kp.co[1])
+                time = round(
                     interp(
-                        kp[i].co[0],
+                        base_kp.co[0],
                         self.base_start_time,
                         self.base_end_time,
                         start,
                         end,
-                    ),
+                    )
                 )
+                keyframe_insert(target, data_path, time)
+
+                new_kp = next(
+                    k for k in target_fcurve.keyframe_points if k.co[0] == time
+                )
+                self._conform_keyframe(base_kp, new_kp, scale)
                 i += 1
+
+    def _get_fcurve(
+        self, target: bpy.types.ID, data_path: str, array_index: int
+    ) -> bpy.types.FCurve:
+        """Get fcurve. If not exists, create it.
+
+        Parameters
+        ----------
+        target : bpy.types.ID
+            Blender ID
+        data_path : str
+            Fcurve data path
+        array_index : int
+            Fcurve array index
+
+        Returns
+        -------
+        bpy.types.FCurve
+            Fcurve
+        """
+        if target.animation_data and target.animation_data.action:
+            for fcurve in target.animation_data.action.fcurves:
+                if data_path == fcurve.data_path and array_index == fcurve.array_index:
+                    return fcurve
+
+        if not target.animation_data or not target.animation_data.action:
+            target.animation_data_create()
+            target.animation_data.action = bpy.data.actions.new(
+                self.mobject.prefix + "." + target.name
+            )
+        target.animation_data.action.fcurves.new(data_path, index=array_index)
+        return target.animation_data.action.fcurves[-1]
+
+    def _conform_keyframe(
+        self, base: bpy.types.Keyframe, target: bpy.types.Keyframe, scale=1
+    ):
+        """Copy keyframe attributes from `base` to `target`.
+
+        Parameters
+        ----------
+        base : bpy.types.Keyframe
+            Base keyframe as reference
+        target : bpy.types.Keyframe
+            Target keyframe that will be changed
+        scale : int, optional
+            multiplier for the handle distance, by default 1
+        """
+        for attr in [
+            "easing",
+            "handle_left_type",
+            "handle_right_type",
+            "interpolation",
+            "type",
+        ]:
+            setattr(target, attr, getattr(base, attr))
+        for handle in ["handle_left", "handle_right"]:
+            getattr(target, handle)[0] = (
+                getattr(base, handle)[0] - base.co[0]
+            ) * scale + target.co[0]
 
 
 class _ID(TypedDict):
