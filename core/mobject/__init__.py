@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import abstractmethod
 import bpy
-from mathutils import Vector
+from mathutils import Euler, Vector
 
 from ..errors import CustomPropertyUnanimatable
 
@@ -119,7 +119,11 @@ class Mobject(Animation):
         Mobject
             Self
         """
-        self.set_rotation(rotation_euler + self.object.rotation_euler)
+        self.set_rotation(
+            (
+                self.object.matrix_basis @ Euler(rotation_euler).to_matrix().to_4x4()
+            ).to_euler()
+        )
         return self
 
     def set_scale(self, scale: Vector) -> Mobject:
