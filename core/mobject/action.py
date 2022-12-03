@@ -120,9 +120,7 @@ class ActionAnimation(Animation):
 
         if not target.animation_data or not target.animation_data.action:
             target.animation_data_create()
-            target.animation_data.action = bpy.data.actions.new(
-                self.mobject.prefix + "." + target.name
-            )
+            target.animation_data.action = bpy.data.actions.new(target.name)
         target.animation_data.action.fcurves.new(data_path, index=array_index)
         return target.animation_data.action.fcurves[-1]
 

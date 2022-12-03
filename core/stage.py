@@ -59,7 +59,10 @@ class Stage:
                 self.markers[name] = Marker(self, obj)
 
         # Remove every objects in the stage collection
-        for obj in self.coll.all_objects:
+        for obj in list(self.coll.all_objects):
+            # Iterating over `self.coll.all_objects` sometimes
+            # gives `EXCEPTION_ACCESS_VIOLATION`. That's why
+            # we use `list(self.coll.all_objects)` instead.
             obj: bpy.types.Object
             bpy.data.objects.remove(obj)
 
@@ -72,6 +75,8 @@ class Stage:
                 release_prefix(prev_prefix)
 
             bpy.data.collections.remove(child)
+
+        bpy.ops.outliner.orphans_purge(do_recursive=True)
 
         self.prefix = reserve_original_prefix("_M.S")
         prefix_coll = bpy.data.collections.new(self.prefix + " [stage_prefix]")

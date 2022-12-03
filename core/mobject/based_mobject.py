@@ -91,16 +91,9 @@ class BasedMobject(Mobject, Animation):
         # Unlink objects with shape keys, so when we animate the shape keys,
         # it wouldn't affect the base object.
         with bpy.context.temp_override(selected_objects=clones_with_shape_keys):
-            bpy.ops.object.make_single_user(
-                animation=True, object=True, obdata=True, obdata_animation=True
-            )
+            bpy.ops.object.make_single_user(object=True, obdata=True)
 
-        # Make animation and object data animation single-user.
-        # And clear the keyframes.
-        with bpy.context.temp_override(selected_objects=clones):
-            bpy.ops.object.make_single_user(animation=True, obdata_animation=True)
-            bpy.ops.anim.keyframe_clear_v3d()
-
+        # Remove animation data in clones with shape keys.
         for obj in clones_with_shape_keys:
             obj.data.shape_keys.animation_data_clear()
 
@@ -112,6 +105,10 @@ class BasedMobject(Mobject, Animation):
         for i, clone in enumerate(clones):
             clone: bpy.types.Object
             clone.name = self.prefix + "." + originals[i].name
+
+            # Remove animation data
+            if clone.animation_data and clone.animation_data.action:
+                clone.animation_data_clear()
 
             # Renames shape keys
             if hasattr(clone.data, "shape_keys") and clone.data.shape_keys:
